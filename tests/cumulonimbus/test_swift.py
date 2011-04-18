@@ -25,7 +25,7 @@ class TestDir(TestCase):
         self.dir = Dir()
 
     def test_no_children_before_being_saved(self):
-        self.assertEqual(self.dir.children(), {})
+        self.assertFalse(any(self.dir.children()))
 
     def test_no_parent_before_being_saved(self):
         self.assertIsNone(self.dir.parent())
@@ -49,7 +49,7 @@ class TestEmptySwift(TestCase):
     def test_empty_root(self):
         root = self.swift.get("/")
         assertIs(root, Dir)
-        assertEqual(root.children(), {})
+        assertFalse(any(root.children()))
 
     def test_make_directory(self):
         self.assertNone(self.swift.mkdir("/test_make_directory"))
