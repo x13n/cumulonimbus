@@ -25,3 +25,11 @@ class TestFS(TestCase):
     def test_opening_dir_with_incorrect_path(self):
         self.assertEquals(self.fs.opendir('dir'), -errno.EINVAL)
         self.assertFalse(self.mock_swift.get.called)
+
+    def test_opening_empty_string_directory(self):
+        self.assertEquals(self.fs.opendir(''), -errno.ENOENT)
+        self.assertFalse(self.mock_swift.get.called)
+
+    def test_opening_nonexistent_dir(self):
+        self.assertEquals(self.fs.opendir('/no_such_directory'), -errno.ENOENT)
+        self.assertTrue(self.mock_swift.get.called)

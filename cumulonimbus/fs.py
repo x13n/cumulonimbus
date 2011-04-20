@@ -20,9 +20,12 @@ class FS:
         """
         Called when a directory is opened. Returns None.
         """
-        if self._path_invalid(path):
-            return -errno.EINVAL
+        error = self._path_error(path)
+        if error is not None:
+            return error
         self.swift.get(path)
+        if path != '/':
+            return -errno.ENOENT
 
     def releasedir(self, path, dh):
         """
@@ -50,5 +53,8 @@ class FS:
         """
         assert(fh is None)
 
-    def _path_invalid(self, path):
-        return path[0] != '/'
+    def _path_error(self, path):
+        if not any(path):
+            return -errno.ENOENT
+        if path[0] != '/':
+            return -errno.EINVAL
