@@ -61,3 +61,7 @@ class TestEmptySwift(TestCase):
         self.swift.mkdir(dir)
         self.assertNone(self.swift.put(dir + "/file", File(0644, data)))
         self.assertEqual(self.swift.get(dir + "/file").contents(), data)
+
+    def test_new_directory_name_in_children_names(self):
+        self.assertNone(self.swift.mkdir("/another_directory"))
+        self.assertIn("another_directory", self.swift.get("/").children_names())
