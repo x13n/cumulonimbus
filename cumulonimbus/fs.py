@@ -1,4 +1,5 @@
 import errno
+from os.path import split
 
 class FS:
     """
@@ -23,9 +24,10 @@ class FS:
         error = self._path_error(path)
         if error is not None:
             return error
-        self.swift.get(path)
         if path != '/':
-            return -errno.ENOENT
+            head, tail = split(path)
+            if tail not in self.swift.get(head).contents().keys():
+                return -errno.ENOENT
 
     def releasedir(self, path, dh):
         """
