@@ -1,3 +1,5 @@
+import errno
+
 class FS:
     """
     Responsible for handling the file system logic. All requests coming from FUSE
@@ -18,6 +20,8 @@ class FS:
         """
         Called when a directory is opened. Returns None.
         """
+        if self._path_invalid(path):
+            return -errno.EINVAL
         self.swift.get(path)
 
     def releasedir(self, path, dh):
@@ -45,3 +49,6 @@ class FS:
         Returns the number of successfully written bytes.
         """
         assert(fh is None)
+
+    def _path_invalid(self, path):
+        return path[0] != '/'

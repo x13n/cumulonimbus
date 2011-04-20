@@ -1,3 +1,4 @@
+import errno
 from unittest import TestCase
 from mock import Mock
 from cumulonimbus.fs import FS
@@ -20,3 +21,7 @@ class TestFS(TestCase):
     def test_opening_root_dir(self):
         self.assertIsNone(self.fs.opendir('/'))
         self.assertTrue(self.mock_swift.get.called)
+
+    def test_opening_dir_with_incorrect_path(self):
+        self.assertEquals(self.fs.opendir('dir'), -errno.EINVAL)
+        self.assertFalse(self.mock_swift.get.called)
