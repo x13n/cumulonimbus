@@ -26,7 +26,7 @@ class FS:
             return error
         if path != '/':
             head, tail = split(path)
-            if tail not in self.swift.get(head).contents().keys():
+            if tail not in self.swift.get(head).children_names():
                 return -errno.ENOENT
 
     def releasedir(self, path, dh):

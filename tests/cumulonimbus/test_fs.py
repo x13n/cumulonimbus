@@ -11,8 +11,8 @@ class TestFS(TestCase):
 
     def prepare_mock_swift(self):
         dir = Mock()
-        dir.contents = Mock()
-        dir.contents.return_value = {}
+        dir.children = Mock()
+        dir.children_names.return_value = []
         mock = Mock()
         mock.get = Mock()
         mock.get.return_value = dir
@@ -40,7 +40,7 @@ class SmallFS(TestFS):
 
     def prepare_mock_swift(self):
         swift = super(SmallFS, self).prepare_mock_swift()
-        swift.get.return_value.contents.return_value = {'dir1': object()}
+        swift.get.return_value.children_names.return_value = ['dir1']
         return swift
 
     def test_opening_dir(self):
