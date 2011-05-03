@@ -35,9 +35,9 @@ class CFuse( fuse.Fuse ):
 
 if __name__ == '__main__':
     def main():
-        #swift = Swift()
-        #fs = FS( swift )
-        cfuse = CFuse( None, dash_s_do='setsingle' )
+        swift = None # Swift()
+        fs = FS( swift )
+        cfuse = CFuse( fs, dash_s_do='setsingle' )
         cfuse.parse( errex=1 )
         cfuse.multithreaded = 0
         cfuse.main()
