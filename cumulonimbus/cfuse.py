@@ -31,7 +31,24 @@ class CFuse( fuse.Fuse ):
 
     def fsdestroy( self ):
         logging.info("[unmount][init]")
+        self.fs = None
         logging.info("[unmount][done]")
+
+    def link( self, target, name ):
+        # no hard links support
+        return -errno.EOPNOTSUPP
+
+    def opendir( self, path ):
+        logging.info("[opendir][init]")
+        retval = self.fs.opendir( path )
+        if retval is None:
+            logging.info("[opendir][done]")
+        return retval
+
+    def mkdir( self, path, mode ):
+        logging.info("[mkdir][init]")
+        self.fs.mkdir( path, mode )
+        logging.info("[mkdir][done]")
 
 if __name__ == '__main__':
     def main():
