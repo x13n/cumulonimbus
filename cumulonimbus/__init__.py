@@ -1,1 +1,1 @@
-__all__ = [ 'fs' , 'swift' ]
+__all__ = [ 'fs' , 'swift', 'cfuse' ]
