@@ -69,6 +69,12 @@ class SmallFS(TestFS):
         self.assertEquals(self.fs.opendir('/no_such_directory'), -errno.ENOENT)
         self.assertTrue(self.mock_swift.get.called)
 
+    def test_readdir_returns_direntries(self):
+        self.fs.opendir('/')
+        self.mock_swift.get.called = False
+        for ent in self.fs.readdir('/', 0, None):
+            self.assertTrue(isinstance(ent, Direntry))
+
     def test_readdir_empty_dir(self):
         self.fs.opendir('/dir1')
         self.mock_swift.get.called = False
