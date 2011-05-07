@@ -1,10 +1,15 @@
+#!/usr/bin/python
+# vim: set fileencoding=utf-8 :
+
 import unittest
 from unittest import TestCase
 
 import sys, os
 sys.path.insert(0, os.path.join('..','..'))
 
-from cumulonimbus.cloud import File, Dir, Swift
+from cumulonimbus.cloud import Swift , NoSuchFileOrDirectory 
+from cumulonimbus.dir import Dir
+from cumulonimbus.file import File
 
 conn_opts = { 'authurl' : 'http://127.0.0.1:8080/auth/v1.0' , 'user' : 'test:tester' , 'key' : 'testing' }
 
@@ -50,17 +55,17 @@ class TestEmptySwift(TestCase):
 #        self.assertEqual(self.swift.get(path).contents(), data)
 
 #    def test_put_empty_file_in_not_existing_dir(self):
-#        with self.assertRaises(NoSuchDirectory):
+#        with self.assertRaises(NoSuchFileOrDirectory):
 #            self.swift.put("/doesnt_exist/file", File(0644, 'foo'))
 
     def test_empty_root(self):
         root = self.swift.get("/")
-#        self.assertIs(root, Dir) # orly?
+#        self.assertIs(root, Dir()) # orly?
         self.assertIsNone(root.children())
 
 #    def test_make_directory(self):
 #        self.assertIsNone(self.swift.mkdir("/test_make_directory"))
-#        self.assertIs(self.swift.get("/").children()["test_make_directory"], Dir)
+#        self.assertIs(self.swift.get("/").children()["test_make_directory"], Dir())
 
 #    def test_put_file_in_subdirectory(self):
 #        dir = "/test_put_file_in_subdirectory"
@@ -79,16 +84,76 @@ class TestDirs(TestCase) :
 		self.swift.mkdir("/")
 		self.swift.mkdir("/dir1")
 
-	def test_connection( self ) :
-		try:
-			self.swift.con.get_auth()
-		except :
-#        except SwiftConnection as e : 
-			self.assertTrue(False,"Connection fail")
+	def test_dir_rm( self ) :
+		self.swift.rm("/dir1",recursive=True)
+		self.swift.mkdir("/dir1/")
+		self.swift.rm("/dir1/",recursive=True)
+
+	def test_dir_rm_recursive( self ) :
+		self.swift.mkdir("/dir2")
+		self.swift.mkdir("/dir2/dir3")
+		self.swift.mkdir("/dir2/dir4")
+		self.swift.rm( '/dir2' , recursive=True )
+
+		with self.assertRaises(NoSuchFileOrDirectory) as cm :
+			self.swift.get("/dir2/")
+		self.assertEqual(str(cm.exception),'/dir2/')
+
+	def test_dir_rm_fail( self ) :
+		with self.assertRaises(NoSuchFileOrDirectory) as cm :
+			self.swift.get('/dir2/dir3')
+		self.assertEqual(str(cm.exception),'/dir2/dir3')
+
+	def test_dir_mk( self ) :
+		self.swift.mkdir("/dir2")
+		self.swift.mkdir("/dir2/dir3/")
+		self.assertIsNotNone( self.swift.get("/dir2") )
+		self.assertIsNotNone( self.swift.get("/dir2/dir3") )
+
+	def test_dir_mk_parents( self ) :
+		self.swift.mkdir("/dir3/dir4/dir5",parents=True)
+		self.assertIsNotNone( self.swift.get("/dir3") )
+		self.assertIsNotNone( self.swift.get("/dir3/dir4") )
+		self.assertIsNotNone( self.swift.get("/dir3/dir4/dir5") )
+
+	def test_dir_mk_fail( self ) :
+		with self.assertRaises(NoSuchFileOrDirectory) as cm :
+			self.swift.mkdir("/dir4/dir5/dir6")
+		self.assertEqual(str(cm.exception),'/dir4/dir5')
 
 	def tearDown( self ) :
 		self.swift.rm("/",recursive=True)
-		self.swift.rm("/dir1",recursive=True)
+
+class TestObjects(TestCase) :
+	def setUp( self ) :
+		self.data = 'zażółć gęślą jaźń\n'*1000
+		self.file = File(0600,self.data)
+		self.swift = Swift(**conn_opts)
+		self.swift.mkdir("/")
+
+	def test_put_get( self ) :
+		self.swift.put( '/file' , self.file )
+		self.assertEqual(
+				self.swift.get( '/file' ).contents() , self.data )
+
+	def test_put_fail( self ) :
+		with self.assertRaises(NoSuchFileOrDirectory) as cm :
+			self.swift.put( '/dir/file' , self.file ) 
+		self.assertEqual(str(cm.exception),'/dir')
+
+		with self.assertRaises(ValueError) as cm :
+			self.swift.put( '/file/' , self.file ) 
+
+	def test_put_rm( self ) :
+		self.swift.put('/file' , self.file )
+		self.swift.rm('/file')
+
+		with self.assertRaises(NoSuchFileOrDirectory) as cm :
+			self.swift.get('/file')
+		self.assertEqual(str(cm.exception),'/file')
+
+	def tearDown( self ) :
+		self.swift.rm("/",recursive=True,force=True)
 
 if __name__ == "__main__":
     unittest.main()
