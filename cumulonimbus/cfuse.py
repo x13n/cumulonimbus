@@ -3,6 +3,12 @@
 import fuse
 from cloud import Swift
 from fs import FS
+import stat
+import errno
+
+# Stubs for Stat
+import os
+from datetime import datetime
 
 # Logging actions
 import logging
@@ -15,7 +21,18 @@ logging.basicConfig(filename=LOG_FILENAME,level=logging.INFO,)
 fuse.fuse_python_api = (0, 2)
 
 class Stat( fuse.Stat ):
-    pass
+    def __init__( self ):
+        self.st_ino = 0
+        self.st_dev = 0
+        self.st_mode = stat.S_IFDIR | 0777 # full access dir TODO: change
+        self.st_nlink = 2 # 2 hardlinks, as for empty dir  TODO: change
+        self.st_uid = os.getuid() # current uid TODO: change
+        self.st_gid = os.getgid() # current gid TODO: change
+        self.st_size = 4096 # dirsize TODO: change
+        now = 0 # datetime.utcnow()
+        self.st_atime = now
+        self.st_mtime = now
+        self.st_ctime = now
 
 class CFuse( fuse.Fuse ):
     """
@@ -56,10 +73,55 @@ class CFuse( fuse.Fuse ):
             logging.info("[opendir][done]")
         return retval
 
+    def readdir( self, path, offset, dh=None ):
+        logging.info("[readdir][init]")
+        for x in self.fs.readdir( path, offset, dh ):
+            yield fuse.Direntry(x)
+        logging.info("[readdir][done]")
+
+    def releasedir( self, path, dh=None ):
+        logging.info("[releasedir][init]")
+        logging.info("[releasedir][done]")
+
     def mkdir( self, path, mode ):
         logging.info("[mkdir][init]")
-        self.fs.mkdir( path, mode )
-        logging.info("[mkdir][done]")
+        retval = None # self.fs.mkdir( path, mode ) TODO: call when implemented
+        if retval is None:
+            logging.info("[mkdir][done]")
+            return 0
+        return retval
+
+    def access( self, path, flags ):
+        logging.info("[access][init] [%s] [%s]" % (path, oct(flags) ) )
+        retval = None # self.fs.access( path, flags )
+        if retval is None:
+                logging.info("[access][done]")
+                return 0
+        return -errno.EACCES
+
+    def getattr( self, path ):
+        logging.info("[getattr][init] [%s]" % (path) )
+        if path != '/':
+            err = -errno.ENOENT
+            logging.info("[getattr][done] %s" % err)
+            return err # TODO: call self.fs.getattr( path ) when implemented
+        retval = Stat()# self.fs.getattr( path )
+        logging.info("[getattr][done]")
+        return retval
+
+    def statfs( self ):
+        logging.info("[statfs][init]")
+        stat = fuse.StatVfs() # TODO: fill it
+        logging.info("[statfs][done]")
+        return stat
+
+    def chmod( self, path, mode ):
+        logging.info("[chmod][init] [%s] [%s]" % (path, oct(mode)) )
+        retval = self.fs.chmod( path, mode )
+        if( retval is None ):
+            logging.info("[chmod][done]")
+            return 0
+        return -errno.EINVAL # TODO: other error(s)?
 
 if __name__ == '__main__':
     def main():

@@ -41,6 +41,8 @@ class FS:
         directory.
         """
         assert(dh is None)
+        yield "."
+        yield ".."
 
     def create(self, path, mode, rdev):
         """
