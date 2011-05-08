@@ -39,8 +39,25 @@ class EmptyFS(TestFS):
 class SmallFS(TestFS):
 
     def prepare_mock_swift(self):
+        """
+        We're mocking a following directory structure:
+
+          /
+            dir1
+            dir2
+              dir3
+
+        """
         swift = super(SmallFS, self).prepare_mock_swift()
-        swift.get.return_value.children_names.return_value = ['dir1']
+        def get_side_effect(path):
+            m = Mock()
+            m.children_names.return_value = {
+                    '/': ['dir1', 'dir2'],
+                    '/dir1' : [],
+                    '/dir2' : ['dir3'],
+                    }[path]
+            return m
+        swift.get.side_effect = get_side_effect
         return swift
 
     def test_opening_dir(self):
@@ -49,4 +66,34 @@ class SmallFS(TestFS):
 
     def test_opening_nonexistent_dir(self):
         self.assertEquals(self.fs.opendir('/no_such_directory'), -errno.ENOENT)
+        self.assertTrue(self.mock_swift.get.called)
+
+    def test_readdir_returns_strings(self):
+        self.fs.opendir('/')
+        self.mock_swift.get.called = False
+        for ent in self.fs.readdir('/', 0, None):
+            self.assertTrue(isinstance(ent, str))
+
+    def test_readdir_empty_dir(self):
+        self.fs.opendir('/dir1')
+        self.mock_swift.get.called = False
+        entries_names = [ent for ent in self.fs.readdir('/dir1', 0, None)]
+        entries_names.sort()
+        self.assertEquals(entries_names, ['.', '..'])
+        self.assertTrue(self.mock_swift.get.called)
+
+    def test_readdir_dir(self):
+        self.fs.opendir('/dir2')
+        self.mock_swift.get.called = False
+        entries_names = [ent for ent in self.fs.readdir('/dir2', 0, None)]
+        entries_names.sort()
+        self.assertEquals(entries_names, ['.', '..', 'dir3'])
+        self.assertTrue(self.mock_swift.get.called)
+
+    def test_readdir_root_dir(self):
+        self.fs.opendir('/')
+        self.mock_swift.get.called = False
+        entries_names = [ent for ent in self.fs.readdir('/', 0, None)]
+        entries_names.sort()
+        self.assertEquals(entries_names, ['.', '..', 'dir1', 'dir2'])
         self.assertTrue(self.mock_swift.get.called)

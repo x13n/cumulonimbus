@@ -1,5 +1,6 @@
 import errno
 from os.path import split
+from fuse import Direntry
 
 class FS:
     """
@@ -41,8 +42,16 @@ class FS:
         directory.
         """
         assert(dh is None)
+        if self._path_error(path) is not None:
+            return
+        if path != '/':
+            head, tail = split(path)
+            if tail not in self.swift.get(head).children_names():
+                return
         yield "."
         yield ".."
+        for name in self.swift.get(path).children_names():
+            yield name
 
     def create(self, path, mode, rdev):
         """
