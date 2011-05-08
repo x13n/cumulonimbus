@@ -1,6 +1,5 @@
 import errno
 from os.path import split
-from fuse import Direntry
 
 class FS:
     """
