@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 import fuse
+from cloud import Swift
+from fs import FS
 
 # Logging actions
 import logging
@@ -21,12 +23,21 @@ class CFuse( fuse.Fuse ):
     Fuse - translates and passes them to FS.
     """
 
-    def __init__(self, fs, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         logging.info("[mount][init]")
-        self.fs = fs
+        self.fs = None
         super(CFuse, self).__init__(*args, **kwargs)
+        self.parser.add_option(mountopt="user", help="describes Swift user")
+        self.parser.add_option(mountopt="key", help="describes Swift key")
+        self.parser.add_option(mountopt="authurl", help="describes Swift auth url")
+
+    def main( self ):
+        if( self.fs is None ):
+            raise "Filesystem was not set!"
+        super(CFuse, self).main()
 
     def fsinit( self ):
+        assert( self.fs is not None )
         logging.info("[mount][done]")
 
     def fsdestroy( self ):
@@ -52,12 +63,11 @@ class CFuse( fuse.Fuse ):
 
 if __name__ == '__main__':
     def main():
-        swift = None # Swift()
-        fs = FS( swift )
-        cfuse = CFuse( fs, dash_s_do='setsingle' )
+        cfuse = CFuse( dash_s_do='setsingle' )
         cfuse.parse( errex=1 )
         cfuse.multithreaded = 0
+        cmd = cfuse.cmdline[0]
+        swift = Swift( cmd.authurl, cmd.user, cmd.key )
+        cfuse.fs = FS( swift )
         cfuse.main()
-    #from cloud import Swift
-    from fs import FS
     main()
