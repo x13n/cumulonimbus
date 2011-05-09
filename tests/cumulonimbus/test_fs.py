@@ -11,12 +11,8 @@ class TestFS(TestCase):
         self.fs = FS(self.mock_swift)
 
     def prepare_mock_swift(self):
-        dir = Mock()
-        dir.children = Mock()
-        dir.children_names.return_value = []
         mock = Mock()
-        mock.get = Mock()
-        mock.get.return_value = dir
+        mock.get.return_value.children_names.return_value = []
         return mock
 
 class EmptyFS(TestFS):
