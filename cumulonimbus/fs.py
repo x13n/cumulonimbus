@@ -1,6 +1,5 @@
 import errno
 from os.path import split
-from fuse import Direntry
 
 class FS:
     """
@@ -38,8 +37,7 @@ class FS:
 
     def readdir(self, path, offset, dh):
         """
-        Yields fuse.Direntry instances representing objects in the given
-        directory.
+        Yields strings with names of nodes in the given directory.
         """
         assert(dh is None)
         if self._path_error(path) is not None:
@@ -48,10 +46,10 @@ class FS:
             head, tail = split(path)
             if tail not in self.swift.get(head).children_names():
                 return
-        yield Direntry(".")
-        yield Direntry("..")
+        yield "."
+        yield ".."
         for name in self.swift.get(path).children_names():
-            yield Direntry(name)
+            yield name
 
     def create(self, path, mode, rdev):
         """
