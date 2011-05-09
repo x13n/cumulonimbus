@@ -1,7 +1,7 @@
 
 class File : 
-	def __init__( self , mod , contents=None ) :
-		self.mod = mod
+	def __init__( self , mode , contents=None ) :
+		self.mode = mode
 		self.ctime = None
 
 		if contents == None :
