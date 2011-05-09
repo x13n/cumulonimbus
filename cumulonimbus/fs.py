@@ -21,13 +21,10 @@ class FS:
         """
         Called when a directory is opened. Returns None.
         """
-        error = self._path_error(path)
-        if error is not None:
-            return error
-        if path != '/':
-            head, tail = split(path)
-            if tail not in self.swift.get(head).children_names():
-                return -errno.ENOENT
+        try:
+            self._file_has_to_exist(path)
+        except PathException as ex:
+            return ex.error
 
     def releasedir(self, path, dh):
         """
@@ -40,12 +37,10 @@ class FS:
         Yields strings with names of nodes in the given directory.
         """
         assert(dh is None)
-        if self._path_error(path) is not None:
+        try:
+            self._file_has_to_exist(path)
+        except PathException:
             return
-        if path != '/':
-            head, tail = split(path)
-            if tail not in self.swift.get(head).children_names():
-                return
         yield "."
         yield ".."
         for name in self.swift.get(path).children_names():
@@ -68,17 +63,28 @@ class FS:
         """
         Checks accessibility of a given file.
         """
-        error = self._path_error(path)
-        if error is not None:
-            return error
+        try:
+            self._file_has_to_exist(path)
+        except PathException as ex:
+            return ex.error
+        return 0
+
+    def _file_has_to_exist(self, path):
+        self._check_for_path_error(path)
         if path != '/':
             head, tail = split(path)
             if tail not in self.swift.get(head).children_names():
-                return -errno.ENOENT
-        return 0
+                raise PathException(-errno.ENOENT)
 
-    def _path_error(self, path):
+    def _check_for_path_error(self, path):
         if not any(path):
-            return -errno.ENOENT
+            raise PathException(-errno.ENOENT)
         if path[0] != '/':
-            return -errno.EINVAL
+            raise PathException(-errno.EINVAL)
+
+class PathException(Exception):
+    """
+    An internal exception raised when a path is incorrect.
+    """
+    def __init__(self, error):
+        self.error = error
