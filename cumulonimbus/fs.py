@@ -64,6 +64,19 @@ class FS:
         """
         assert(fh is None)
 
+    def access(self, path, flags):
+        """
+        Checks accessibility of a given file.
+        """
+        error = self._path_error(path)
+        if error is not None:
+            return error
+        if path != '/':
+            head, tail = split(path)
+            if tail not in self.swift.get(head).children_names():
+                return -errno.ENOENT
+        return 0
+
     def _path_error(self, path):
         if not any(path):
             return -errno.ENOENT

@@ -1,4 +1,5 @@
 import errno
+import os
 from unittest import TestCase
 from mock import Mock
 from cumulonimbus.fs import FS
@@ -97,3 +98,11 @@ class SmallFS(TestFS):
         entries.sort()
         self.assertEquals(entries, ['.', '..', 'dir1', 'dir2'])
         self.assertTrue(self.mock_swift.get.called)
+
+    def test_accessing_dir(self):
+        for dir in ['/dir1', '/dir2', '/dir2/dir3']:
+            self.assertEquals(self.fs.access(dir, os.F_OK), 0)
+
+    def test_accessing_nonexistent_dir(self):
+        for dir in ['/nothing', '/dir2/no_such_dir']:
+            self.assertEquals(self.fs.access(dir, os.F_OK), -errno.ENOENT)
