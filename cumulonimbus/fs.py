@@ -1,5 +1,6 @@
 import errno
 from os.path import split
+from file import File
 
 class FS:
     """
@@ -50,7 +51,9 @@ class FS:
         """
         Creates a new file with a given mode and returns None.
         """
-        pass
+        assert(rdev == 0)
+        assert(mode >= 0)
+        self.swift.put(path, File(mode, ''))
 
     def write(self, path, buf, offset, fh):
         """

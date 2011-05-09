@@ -3,6 +3,7 @@ import os
 from unittest import TestCase
 from mock import Mock
 from cumulonimbus.fs import FS
+from cumulonimbus.file import File
 
 class TestFS(TestCase):
 
@@ -32,6 +33,14 @@ class EmptyFS(TestFS):
     def test_opening_nonexistent_dir(self):
         self.assertEquals(self.fs.opendir('/no_such_directory'), -errno.ENOENT)
         self.assertTrue(self.mock_swift.get.called)
+
+    def test_creating_file(self):
+        self.assertIsNone(self.fs.create('/file', 0321, 0))
+        args = self.mock_swift.put.call_args
+        self.assertEquals(args[1], {})
+        self.assertEquals(len(args[0]), 2)
+        self.assertEquals(args[0][1].mode, 0321)
+        self.assertEquals(args[0][1].contents(), '')
 
 class SmallFS(TestFS):
 
