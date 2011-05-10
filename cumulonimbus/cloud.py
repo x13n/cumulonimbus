@@ -2,6 +2,7 @@
 import os.path
 
 import urllib
+import time
 
 import swift.common.client as scc
 
@@ -17,6 +18,9 @@ def sw2fs( path ) :
 
 def fs2sw( path ) :
 	return urllib.quote_plus( path )
+
+def toepoch( string ) :
+	return time.mktime(time.strptime(string,"%a, %d %b %Y %H:%M:%S %Z"))
 
 class Dir( dir.Dir ) :
 	def __init__( self , connection , mode ) :
@@ -90,7 +94,7 @@ class Swift :
 				if e.http_status == 404 :
 					raise NoSuchFileOrDirectory(path)
 				else : raise e
-			return File(0600,obj[1])
+			return File(0600,obj[1],toepoch(obj[0]['last-modified']))
 		assert(False)
 
 	def put( self , path , file ) :

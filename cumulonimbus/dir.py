@@ -1,8 +1,7 @@
 
 class Dir : 
-	def __init__( self , mode , path = None ) :
+	def __init__( self , mode ) :
 		self.mode  = mode
-		self.path  = path
 		self.daddy = None
 		self.offspring = {}
 

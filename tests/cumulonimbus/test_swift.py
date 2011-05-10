@@ -139,10 +139,10 @@ class TestSwiftDirs(TestCase) :
 		dir = dir.parent().children()['a']
 		self.assertEqual(['b','g'],dir.children_names())
 		dir = dir.children()['g']
-		self.assertEqual([],dir.children_names())
+		self.assertSequenceEqual([],dir.children_names())
 		dir = dir.parent().children()['b']
-		self.assertEqual(['c','e','f'],dir.children_names())
-		self.assertEqual(['d'],dir.children()['c'].children_names())
+		self.assertSequenceEqual(['c','e','f'],dir.children_names())
+		self.assertSequenceEqual(['d'],dir.children()['c'].children_names())
 
 	def test_dir_parent( self ) :
 		# FIXME: how test dir equality?
@@ -180,6 +180,11 @@ class TestSwiftObjects(TestCase) :
 		with self.assertRaises(NoSuchFileOrDirectory) as cm :
 			self.swift.get('/file')
 		self.assertEqual(str(cm.exception),'/file')
+
+	def test_file_ctime( self ) :
+		self.swift.put('/file' , self.file )
+		self.file.touch()
+		self.assertLessEqual(self.swift.get('/file').ctime,self.file.ctime)
 
 	def tearDown( self ) :
 		self.swift.rm("/",recursive=True,force=True)
