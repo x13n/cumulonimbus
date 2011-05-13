@@ -72,6 +72,18 @@ class FS:
             return ex.error
         return 0
 
+    def mkdir(self, path, mode):
+        """
+        Writes contents of buf to file at path beginning at the given offset.
+        Returns the number of successfully written bytes.
+        """
+        try:
+            parent, _ = split(path)
+            self._file_has_to_exist(parent)
+        except PathException as ex:
+            return ex.error
+        self.swift.mkdir(path)
+
     def _file_has_to_exist(self, path):
         self._check_for_path_error(path)
         if path != '/':

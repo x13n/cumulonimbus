@@ -42,6 +42,18 @@ class EmptyFS(TestFS):
         self.assertEquals(args[0][1].mode, 0321)
         self.assertEquals(args[0][1].contents(), '')
 
+    def test_creating_directory(self):
+        self.assertIsNone(self.fs.mkdir('/new_dir', 0321))
+        args = self.mock_swift.mkdir.call_args
+        self.assertEquals(args[1], {})
+        self.assertEquals(len(args[0]), 1)
+        self.assertEquals(args[0][0], '/new_dir')
+        # TODO: check mode
+
+    def test_creating_invalid_dir(self):
+        self.assertEquals(self.fs.mkdir('asdf', 0755), -errno.ENOENT)
+        self.assertFalse(self.mock_swift.mkdir.called)
+
 class SmallFS(TestFS):
 
     def prepare_mock_swift(self):
