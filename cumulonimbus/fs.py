@@ -84,6 +84,21 @@ class FS:
             return ex.error
         self.swift.mkdir(path)
 
+    def rename(self, old, new):
+        """
+        Moves a file from one path to another.
+        """
+        if old == new:
+            # TODO: Which error should be returned here?
+            return -errno.EOPNOTSUPP
+        try:
+            new_parent, _ = split(new)
+            self._file_has_to_exist(old)
+            self._file_has_to_exist(new_parent)
+        except PathException as ex:
+            return ex.error
+        self.swift.put(new, self.swift.get(old))
+
     def _file_has_to_exist(self, path):
         self._check_for_path_error(path)
         if path != '/':
