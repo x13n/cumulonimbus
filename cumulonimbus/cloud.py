@@ -9,7 +9,11 @@ import swift.common.client as scc
 import dir
 import file
 
-class NoSuchFileOrDirectory( Exception ) : pass
+class CloudException( Exception ) : pass
+class NoSuchFileOrDirectory( CloudException ) : pass
+class OperationNotPermitted( CloudException ) : pass
+class DirectoryNotEmpty( CloudException ) : pass
+class UnknownError( CloudException ) : pass
 # in default swift doesnt alarm if container exists do we need this?
 #class DirectoryExists( Exception ) : pass
 
@@ -84,16 +88,21 @@ class Swift :
 			self._sync_dirs()
 			return self.dirs[path]
 		except scc.ClientException as e :
-			if e.http_status != 404 : raise e
+			if e.http_status == 401 :
+				raise OperationNotPermitted('get '+path)
+			elif e.http_status != 404 :
+				raise UnknownError(e)
 			cont , obj = os.path.split(path)
 			if obj == '' : raise NoSuchFileOrDirectory(path)
 
 			try :
 				obj = self.con.get_object(fs2sw(cont),obj)
 			except scc.ClientException as e :
+				if e.http_status == 401 :
+					raise OperationNotPermitted('get '+path)
 				if e.http_status == 404 :
 					raise NoSuchFileOrDirectory(path)
-				else : raise e
+				else : raise UnknownError(e)
 			return File(0600,obj[1],toepoch(obj[0]['last-modified']))
 		assert(False)
 
@@ -101,7 +110,7 @@ class Swift :
 		'''
 		send file at given path 
 
-		can rise error if path is invalid
+		can rise ValueError if path is invalid
 		'''
 		assert( self.con != None )
 
@@ -115,9 +124,11 @@ class Swift :
 		try :
 			self.con.put_object(fs2sw(cont),obj,file.contents())
 		except scc.ClientException as e :
+			if e.http_status == 401 :
+				raise OperationNotPermitted('get '+path)
 			if e.http_status == 404 :
 				raise NoSuchFileOrDirectory(cont)
-			else : raise e
+			else : raise UnknownError(e)
 
 	def mkdir( self , path  , parents = False ) :
 		'''
@@ -162,8 +173,14 @@ class Swift :
 			try :
 				self._rm_dir( path )
 			except scc.ClientException as e :
-				if e.http_status != 404 : raise e
-				self._rm_file( path )
+				if e.http_status == 401 :
+					raise OperationNotPermitted('get '+path)
+				if e.http_status == 404 :
+					self._rm_file( path )
+				if e.http_status == 409 :
+					raise DirectoryNotEmpty(path)
+				else:
+					raise UnknownError(e)
 		else :
 			self._rm_file( path )
 
@@ -188,7 +205,9 @@ class Swift :
 		try :
 			self.con.delete_object(fs2sw(cont),obj)
 		except scc.ClientException as e :
+			if e.http_status == 401 :
+				raise OperationNotPermitted('get '+path)
 			if e.http_status == 404 :
 				raise NoSuchFileOrDirectory(path)
-			else : raise e
+			else : raise UnknownError(e)
 
