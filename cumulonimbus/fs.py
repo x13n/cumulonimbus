@@ -1,6 +1,7 @@
 import errno
 from os.path import split
 from file import File
+from cloud import NoSuchFileOrDirectory
 
 class FS:
     """
@@ -92,12 +93,10 @@ class FS:
             # TODO: Which error should be returned here?
             return -errno.EOPNOTSUPP
         try:
-            new_parent, _ = split(new)
-            self._file_has_to_exist(old)
-            self._file_has_to_exist(new_parent)
-        except PathException as ex:
-            return ex.error
-        self.swift.put(new, self.swift.get(old))
+            self.swift.put(new, self.swift.get(old))
+            self.swift.rm(old)
+        except NoSuchFileOrDirectory:
+            return -errno.ENOENT
 
     def _file_has_to_exist(self, path):
         self._check_for_path_error(path)
