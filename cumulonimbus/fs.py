@@ -52,7 +52,6 @@ class FS:
         """
         Creates a new file with a given mode and returns None.
         """
-        assert(rdev == 0)
         assert(mode >= 0)
         self.swift.put(path, File(mode, ''))
 
