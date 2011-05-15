@@ -43,11 +43,12 @@ class CFuse( fuse.Fuse ):
     def opendir(self, path):
         return self.fs.opendir(path)
 
-    def releasedir(self, path, dh):
+    def releasedir(self, path, dh=None):
         return self.fs.releasedir(path, dh)
 
-    def readdir(self, path, offset, dh):
-        return self.fs.readdir(path, offset, dh)
+    def readdir(self, path, offset, dh=None):
+        for name in self.fs.readdir(path, offset, dh):
+            yield fuse.Direntry(name)
 
     def create(self, path, mode, rdev):
         return self.fs.create(path, mode, rdev)
