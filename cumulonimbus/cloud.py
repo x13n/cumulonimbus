@@ -1,6 +1,9 @@
 
 import os.path
 
+import urllib
+import time
+
 import swift.common.client as scc
 
 import dir
@@ -11,19 +14,19 @@ class NoSuchFileOrDirectory( Exception ) : pass
 #class DirectoryExists( Exception ) : pass
 
 def sw2fs( path ) :
-	return str.replace(path,'\\','/')
+	return urllib.unquote_plus( path )
 
 def fs2sw( path ) :
-	return str.replace(path,'/','\\')
+	return urllib.quote_plus( path )
+
+def toepoch( string ) :
+	return time.mktime(time.strptime(string,"%a, %d %b %Y %H:%M:%S %Z"))
 
 class Dir( dir.Dir ) :
 	def __init__( self , connection , mode ) :
 		dir.Dir.__init__( self , mode ) 
 
 		self.con = connection
-
-	def children( self ) :
-		return None
 
 class File( file.File ) :
 	pass
@@ -34,18 +37,34 @@ class Swift :
 	def __init__( self , authurl , user , key ) :
 		''' Connect to swift server and create root directory '''
 		self.con = scc.Connection( authurl , user , key )
+		self.dirs = {}
 #        try :
 		self.mkdir('/')
 #        except DirectoryExists :
 #            pass
 
-#        self.dirs = {}
-#        for p in self.con.get_account()[1] :
-#            self.dirs[p['name']] = Dir( self.con , 0644 )
-
 	def _flush( self ) :
 		''' force send all data to swift server '''
 		pass
+
+	def _synced( self , file ) :
+		return False
+
+	def _sync_dirs( self ) :
+		if self._synced( 'dirs.timestamp' ) :
+			return
+
+		self.dirs = {}
+		for p in self.con.get_account()[1] :
+			name = sw2fs(p['name'])
+			self.dirs[name] = Dir( self.con , 0644 )
+
+		for path , dir in self.dirs.items() :
+			parent_path , name = os.path.split(path)
+			parent = self.dirs[parent_path]
+			if name != '' :
+				parent.set_child( name , dir )
+				dir.set_parent( parent )
 
 	def sync( self ) :
 		''' synchronize with swift server '''
@@ -55,12 +74,15 @@ class Swift :
 		''' recive file or dir given by path '''
 		assert( self.con != None ) 
 
+		path = os.path.normpath(path)
+
 		cont , obj = os.path.split(path)
 
 		try :
+			# check if such dir exist
 			self.con.get_container(fs2sw(path))
-			# TODO: create children list
-			return Dir( self.con , 0600 )
+			self._sync_dirs()
+			return self.dirs[path]
 		except scc.ClientException as e :
 			if e.http_status != 404 : raise e
 			cont , obj = os.path.split(path)
@@ -72,7 +94,8 @@ class Swift :
 				if e.http_status == 404 :
 					raise NoSuchFileOrDirectory(path)
 				else : raise e
-			return File(0600,obj[1])
+			return File(0600,obj[1],toepoch(obj[0]['last-modified']))
+		assert(False)
 
 	def put( self , path , file ) :
 		'''
@@ -89,7 +112,12 @@ class Swift :
 
 		self.get(cont)
 
-		self.con.put_object(fs2sw(cont),obj,file.contents())
+		try :
+			self.con.put_object(fs2sw(cont),obj,file.contents())
+		except scc.ClientException as e :
+			if e.http_status == 404 :
+				raise NoSuchFileOrDirectory(cont)
+			else : raise e
 
 	def mkdir( self , path  , parents = False ) :
 		'''
