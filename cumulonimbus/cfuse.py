@@ -85,7 +85,7 @@ class CFuse( fuse.Fuse ):
 
     def mkdir( self, path, mode ):
         logging.info("[mkdir][init]")
-        retval = None # self.fs.mkdir( path, mode ) TODO: call when implemented
+        retval = self.fs.mkdir( path, mode )
         if retval is None:
             logging.info("[mkdir][done]")
             return 0
@@ -93,17 +93,15 @@ class CFuse( fuse.Fuse ):
 
     def access( self, path, flags ):
         logging.info("[access][init] [%s] [%s]" % (path, oct(flags) ) )
-        retval = None # self.fs.access( path, flags )
-        if retval is None:
-                logging.info("[access][done]")
-                return 0
-        return -errno.EACCES
+        retval = self.fs.access( path, flags )
+        if retval == 0:
+            logging.info("[access][done]")
+        return retval
 
     def getattr( self, path ):
         logging.info("[getattr][init] [%s]" % (path) )
-        if path != '/':
+        if self.fs.access() == -errno.ENOENT
             err = -errno.ENOENT
-            logging.info("[getattr][done] %s" % err)
             return err # TODO: call self.fs.getattr( path ) when implemented
         retval = Stat()# self.fs.getattr( path )
         logging.info("[getattr][done]")
