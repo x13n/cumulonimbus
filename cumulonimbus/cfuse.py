@@ -121,6 +121,15 @@ class CFuse( fuse.Fuse ):
             return 0
         return -errno.EINVAL # TODO: other error(s)?
 
+    def mknod(self, path, mode, rdev):
+        logging.info("[mknod][init]")
+        if( mode & os.S_IFREG == 0 ):
+            return -errno.EOPNOTSUPP
+        retval = self.fs.create(self, path, mode & 0777, rdev)
+        if retval == 0:
+            logging.info("[mknod][done]")
+        return retval
+
 if __name__ == '__main__':
     def main():
         cfuse = CFuse( dash_s_do='setsingle' )
