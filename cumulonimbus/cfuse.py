@@ -100,7 +100,7 @@ class CFuse( fuse.Fuse ):
 
     def getattr( self, path ):
         logging.info("[getattr][init] [%s]" % (path) )
-        if self.fs.access() == -errno.ENOENT
+        if self.fs.access() == -errno.ENOENT:
             err = -errno.ENOENT
             return err # TODO: call self.fs.getattr( path ) when implemented
         retval = Stat()# self.fs.getattr( path )
