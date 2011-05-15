@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 import fuse
+import stat
+import errno
 
 # Logging actions
 import logging
@@ -11,9 +13,6 @@ logging.basicConfig(filename=LOG_FILENAME,level=logging.INFO,)
 
 # FUSE version at the time of writing. Be compatible with this version.
 fuse.fuse_python_api = (0, 2)
-
-class Stat( fuse.Stat ):
-    pass
 
 class CFuse( fuse.Fuse ):
     """
@@ -32,6 +31,14 @@ class CFuse( fuse.Fuse ):
     def fsdestroy( self ):
         logging.info("[unmount][init]")
         logging.info("[unmount][done]")
+
+    def getattr(self, path):
+        if path == "/":
+            return fuse.Stat(st_ino = 1, st_mode = (stat.S_IFDIR | 0755),
+                    st_dev = 0, st_nlink = 1, st_uid = 0, st_gid = 0,
+                    st_size = 0, st_atime = 0, st_mtime = 0, st_ctime = 0)
+        else:
+            return -errno.ENOENT
 
     def opendir(self, path):
         return self.fs.opendir(path)
