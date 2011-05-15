@@ -12,6 +12,9 @@ class File :
 	def size( self ) :
 		return self._size
 
+	def mode(self) :
+		return self._mode
+
 	@property
 	def ctime( self ) :
 		return self._ctime

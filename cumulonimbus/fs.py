@@ -1,5 +1,7 @@
 import errno
 from os.path import split
+from file import File
+from cloud import NoSuchFileOrDirectory
 
 class FS:
     """
@@ -21,13 +23,10 @@ class FS:
         """
         Called when a directory is opened. Returns None.
         """
-        error = self._path_error(path)
-        if error is not None:
-            return error
-        if path != '/':
-            head, tail = split(path)
-            if tail not in self.swift.get(head).children_names():
-                return -errno.ENOENT
+        try:
+            self._file_has_to_exist(path)
+        except PathException as ex:
+            return ex.error
 
     def releasedir(self, path, dh):
         """
@@ -37,11 +36,12 @@ class FS:
 
     def readdir(self, path, offset, dh):
         """
-        Yields fuse.Direntry instances representing objects in the given
-        directory.
+        Yields strings with names of nodes in the given directory.
         """
         assert(dh is None)
-        if self._path_error(path) is not None:
+        try:
+            self._file_has_to_exist(path)
+        except PathException:
             return
         if path != '/':
             head, tail = split(path)
@@ -56,7 +56,8 @@ class FS:
         """
         Creates a new file with a given mode and returns None.
         """
-        pass
+        assert(mode >= 0)
+        self.swift.put(path, File(mode, ''))
 
     def write(self, path, buf, offset, fh):
         """
@@ -65,8 +66,57 @@ class FS:
         """
         assert(fh is None)
 
-    def _path_error(self, path):
-        if not any(path):
+    def access(self, path, flags):
+        """
+        Checks accessibility of a given file.
+        """
+        try:
+            self._file_has_to_exist(path)
+        except PathException as ex:
+            return ex.error
+        return 0
+
+    def mkdir(self, path, mode):
+        """
+        Writes contents of buf to file at path beginning at the given offset.
+        Returns the number of successfully written bytes.
+        """
+        try:
+            parent, _ = split(path)
+            self._file_has_to_exist(parent)
+        except PathException as ex:
+            return ex.error
+        self.swift.mkdir(path)
+
+    def rename(self, old, new):
+        """
+        Moves a file from one path to another.
+        """
+        if old == new:
+            # TODO: Which error should be returned here?
+            return -errno.EOPNOTSUPP
+        try:
+            self.swift.put(new, self.swift.get(old))
+            self.swift.rm(old)
+        except NoSuchFileOrDirectory:
             return -errno.ENOENT
+
+    def _file_has_to_exist(self, path):
+        self._check_for_path_error(path)
+        if path != '/':
+            head, tail = split(path)
+            if tail not in self.swift.get(head).children_names():
+                raise PathException(-errno.ENOENT)
+
+    def _check_for_path_error(self, path):
+        if not any(path):
+            raise PathException(-errno.ENOENT)
         if path[0] != '/':
-            return -errno.EINVAL
+            raise PathException(-errno.EINVAL)
+
+class PathException(Exception):
+    """
+    An internal exception raised when a path is incorrect.
+    """
+    def __init__(self, error):
+        self.error = error
