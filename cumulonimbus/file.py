@@ -1,16 +1,27 @@
 
+import time
+
 class File : 
-	def __init__( self , mode , contents=None ) :
-		self.mode = mode
-		self.ctime = None
+	def __init__( self , mode , contents=None , ctime=None ) :
+		self._mode  = mode
+		self._ctime = ctime    if ctime   !=None else None
+		self._data  = contents if contents!=None else ''
+		self._size  = len(self._data)
 
-		if contents == None :
-			self.con = ''
-		else : # FIXME: binary and text files?
-			self.con = contents
+	@property
+	def size( self ) :
+		return self._size
 
-		self.size = len(self.con)
+	def mode(self) :
+		return self._mode
+
+	@property
+	def ctime( self ) :
+		return self._ctime
+
+	def touch( self ) :
+		self._ctime = time.time()
 
 	def contents( self ) :
-		return self.con
+		return self._data
 
