@@ -33,6 +33,30 @@ class CFuse( fuse.Fuse ):
         logging.info("[unmount][init]")
         logging.info("[unmount][done]")
 
+    def opendir(self, path):
+        return self.fs.opendir(path)
+
+    def releasedir(self, path, dh):
+        return self.fs.releasedir(path, dh)
+
+    def readdir(self, path, offset, dh):
+        return self.fs.readdir(path, offset, dh)
+
+    def create(self, path, mode, rdev):
+        return self.fs.create(path, mode, rdev)
+
+    def write(self, path, buf, offset, fh):
+        return self.fs.write(path, buf, offset, fh)
+
+    def access(self, path, flags):
+        return self.fs.access(path, flags)
+
+    def mkdir(self, path, mode):
+        return self.fs.mkdir(path, mode)
+
+    def rename(self, old, new):
+        return self.fs.rename(self, old, new)
+
 if __name__ == '__main__':
     def main():
         swift = None # Swift()
