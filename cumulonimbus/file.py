@@ -12,6 +12,7 @@ class File :
 	def size( self ) :
 		return self._size
 
+	@property
 	def mode(self) :
 		return self._mode
 

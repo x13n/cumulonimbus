@@ -40,7 +40,7 @@ class EmptyFS(TestFS):
         self.assertEquals(args[1], {})
         self.assertEquals(len(args[0]), 2)
         self.assertEquals(args[0][1].mode, 0321)
-        self.assertEquals(args[0][1].contents(), '')
+        self.assertEquals(args[0][1].contents, '')
 
     def test_creating_directory(self):
         self.assertIsNone(self.fs.mkdir('/new_dir', 0321))
