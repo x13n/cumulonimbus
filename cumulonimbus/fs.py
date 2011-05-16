@@ -45,11 +45,11 @@ class FS:
             return
         if path != '/':
             head, tail = split(path)
-            if tail not in self.swift.get(head).children_names():
+            if tail not in self.swift.get(head).children.names():
                 return
         yield "."
         yield ".."
-        for name in self.swift.get(path).children_names():
+        for name in self.swift.get(path).children.names():
             yield name
 
     def create(self, path, mode, rdev):
@@ -105,7 +105,7 @@ class FS:
         self._check_for_path_error(path)
         if path != '/':
             head, tail = split(path)
-            if tail not in self.swift.get(head).children_names():
+            if tail not in self.swift.get(head).children.names():
                 raise PathException(-errno.ENOENT)
 
     def _check_for_path_error(self, path):

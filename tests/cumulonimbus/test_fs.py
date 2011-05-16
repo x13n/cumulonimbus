@@ -13,7 +13,7 @@ class TestFS(TestCase):
 
     def prepare_mock_swift(self):
         mock = Mock()
-        mock.get.return_value.children_names.return_value = []
+        mock.get.return_value.children.names.return_value = []
         return mock
 
 class EmptyFS(TestFS):
@@ -69,7 +69,7 @@ class SmallFS(TestFS):
         swift = super(SmallFS, self).prepare_mock_swift()
         def get_side_effect(path):
             m = Mock()
-            m.children_names.return_value = {
+            m.children.names.return_value = {
                     '/': ['dir1', 'dir2'],
                     '/dir1' : [],
                     '/dir2' : ['dir3'],
