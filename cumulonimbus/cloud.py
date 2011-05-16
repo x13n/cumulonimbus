@@ -61,7 +61,11 @@ class Swift :
 		self.dirs = {}
 		for p in self.con.get_account()[1] :
 			name = sw2fs(p['name'])
-			self.dirs[name] = Dir( self.con , 0644 )
+			d = Dir( self.con , 0755 )
+			for c in self.con.get_container(p['name'])[1] :
+				o = self.con.get_object(p['name'],c['name'])
+				d.set_child( c['name'] , File(0644,o[1],o[0]['last-modified']) )
+			self.dirs[name] = d
 
 		for path , dir in self.dirs.items() :
 			parent_path , name = os.path.split(path)
@@ -103,7 +107,7 @@ class Swift :
 				if e.http_status == 404 :
 					raise NoSuchFileOrDirectory(path)
 				else : raise UnknownError(e)
-			return File(0600,obj[1],toepoch(obj[0]['last-modified']))
+			return File(0644,obj[1],toepoch(obj[0]['last-modified']))
 		assert(False)
 
 	def put( self , path , file ) :
@@ -122,7 +126,7 @@ class Swift :
 		self.get(cont)
 
 		try :
-			self.con.put_object(fs2sw(cont),obj,file.contents())
+			self.con.put_object(fs2sw(cont),obj,file.contents)
 		except scc.ClientException as e :
 			if e.http_status == 401 :
 				raise OperationNotPermitted('get '+path)

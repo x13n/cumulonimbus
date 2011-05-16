@@ -22,6 +22,15 @@ class File :
 	def touch( self ) :
 		self._ctime = time.time()
 
+	@property
 	def contents( self ) :
 		return self._data
+
+	@contents.setter
+	def contents( self , data ) :
+		self._data = data
+
+	@contents.deleter
+	def contents( self ) :
+		self._data = ''
 
