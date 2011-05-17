@@ -100,12 +100,16 @@ class CFuse( fuse.Fuse ):
 
     def getattr( self, path ):
         logging.info("[getattr][init] [%s]" % (path) )
-        if self.fs.access( path, 0 ) == -errno.ENOENT:
-            err = -errno.ENOENT
-            return err # TODO: call self.fs.getattr( path ) when implemented
-        retval = Stat()# self.fs.getattr( path )
-        logging.info("[getattr][done]")
-        return retval
+        try:
+            if self.fs.access( path, 0 ) == -errno.ENOENT:
+                err = -errno.ENOENT
+                return err # TODO: call self.fs.getattr( path ) when implemented
+            retval = Stat()# self.fs.getattr( path )
+            logging.info("[getattr][done]")
+            return retval
+        except Exception as e:
+            logging.info("[getattr][exception] " + str(e))
+            return -errno.EINVAL
 
     def statfs( self ):
         logging.info("[statfs][init]")
@@ -123,12 +127,23 @@ class CFuse( fuse.Fuse ):
 
     def mknod(self, path, mode, rdev):
         logging.info("[mknod][init]")
-        if( mode & os.S_IFREG == 0 ):
+        if( mode & stat.S_IFREG == 0 ):
             return -errno.EOPNOTSUPP
-        retval = self.fs.create(self, path, mode & 0777, rdev)
-        if retval == 0:
+        try:
+            retval = self.fs.create(path, mode & 0777, rdev)
+        except Exception as e:
+            logging.info("[mknod][exception] " + str(e))
+            return -errno.EINVAL
+        if retval is None:
             logging.info("[mknod][done]")
+            return 0
         return retval
+
+    def chown( self, path, uid, gid ):
+        pass
+
+    def utime(self, path, times):
+        pass
 
 if __name__ == '__main__':
     def main():
