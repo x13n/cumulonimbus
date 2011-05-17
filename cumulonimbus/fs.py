@@ -1,6 +1,7 @@
 import errno
 from os.path import split, join
 from file import File
+from dir import Dir
 from cloud import NoSuchFileOrDirectory
 
 class FS:
@@ -98,9 +99,9 @@ class FS:
             return
         try:
             inode = self.swift.get(src)
-            if isinstance(inode, File):
+            if not inode.contents is None:
                 self._mv_file(src, dst)
-            elif isinstance(inode, Dir):
+            elif not inode.children is None:
                 self._mv_dir(src, dst)
             else:
                 raise Exception("Unexpected inode type: %s" % type(inode))
@@ -109,7 +110,7 @@ class FS:
 
     def _mv_dir(self, src, dst):
         src_dir = self.swift.get(src)
-        assert(isinstance(src_dir, Dir))
+        assert(not src_dir.children is None)
         self.mkdir(dst, src_dir.mode)
         # Now recursively move contents of the src directory to the dst.
         for child in src_dir.children.names():
@@ -122,13 +123,13 @@ class FS:
                 # Not good, this isn't an error we're expecting to encounter.
                 raise Exception(repr(err))
         self.swift.rm(src)
-        assert(isinstance(self.swift.get(dst), Dir))
+        assert(not self.swift.get(dst).children is None)
 
     def _mv_file(self, src, dst):
-        assert(isinstance(self.swift.get(src), File))
+        assert(not self.swift.get(src).contents is None)
         self.swift.put(dst, self.swift.get(src))
         self.swift.rm(src)
-        assert(isinstance(self.swift.get(dst), File))
+        assert(not self.swift.get(dst).contents is None)
 
     def unlink(self, path):
         """
