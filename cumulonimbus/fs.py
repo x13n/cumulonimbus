@@ -1,5 +1,5 @@
 import errno
-from os.path import split
+from os.path import split, join
 from file import File
 from cloud import NoSuchFileOrDirectory
 
@@ -88,18 +88,47 @@ class FS:
             return ex.error
         self.swift.mkdir(path)
 
-    def rename(self, old, new):
+    def rename(self, src, dst):
         """
-        Moves a file from one path to another.
+        Moves a file or a directory from one path to another. In case of
+        directories uses a recursive approach.
         """
-        if old == new:
-            # TODO: Which error should be returned here?
-            return -errno.EOPNOTSUPP
+        if src == dst:
+            # If src is equal to dst there's nothing we can do.
+            return
         try:
-            self.swift.put(new, self.swift.get(old))
-            self.swift.rm(old)
+            inode = self.swift.get(src)
+            if isinstance(inode, File):
+                self._mv_file(src, dst)
+            elif isinstance(inode, Dir):
+                self._mv_dir(src, dst)
+            else:
+                raise Exception("Unexpected inode type: %s" % type(inode))
         except NoSuchFileOrDirectory:
             return -errno.ENOENT
+
+    def _mv_dir(self, src, dst):
+        src_dir = self.swift.get(src)
+        assert(isinstance(src_dir, Dir))
+        self.mkdir(dst, src_dir.mode)
+        # Now recursively move contents of the src directory to the dst.
+        for child in src_dir.children.names():
+            if child in ['.', '..']:
+                continue
+            err = self.rename(join(src, child), join(dst, child))
+            if err == -errno.ENOENT:
+                raise NoSuchFileOrDirectory
+            elif not err is None:
+                # Not good, this isn't an error we're expecting to encounter.
+                raise Exception(repr(err))
+        self.swift.rm(src)
+        assert(isinstance(self.swift.get(dst), Dir))
+
+    def _mv_file(self, src, dst):
+        assert(isinstance(self.swift.get(src), File))
+        self.swift.put(dst, self.swift.get(src))
+        self.swift.rm(src)
+        assert(isinstance(self.swift.get(dst), File))
 
     def unlink(self, path):
         """
