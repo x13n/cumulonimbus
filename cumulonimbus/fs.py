@@ -101,6 +101,15 @@ class FS:
         except NoSuchFileOrDirectory:
             return -errno.ENOENT
 
+    def unlink(self, path):
+        """
+        Removes a file.
+        """
+        try:
+            self.swift.rm(path)
+        except NoSuchFileOrDirectory:
+            return -errno.ENOENT
+
     def _file_has_to_exist(self, path):
         self._check_for_path_error(path)
         if path != '/':
