@@ -125,7 +125,7 @@ class CFuse( fuse.Fuse ):
         logging.info("[mknod][init]")
         if( mode & os.S_IFREG == 0 ):
             return -errno.EOPNOTSUPP
-        retval = self.fs.create(self, path, mode & 0777, rdev)
+        retval = self.fs.create(path, mode & 0777, rdev)
         if retval == 0:
             logging.info("[mknod][done]")
         return retval
