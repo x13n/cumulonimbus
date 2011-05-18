@@ -1,8 +1,9 @@
 import errno
 import os
+import stat
 from unittest import TestCase
 from mock import Mock
-from cumulonimbus.fs import FS
+from cumulonimbus.fs import FS, Stat
 from cumulonimbus.file import File
 from cumulonimbus.dir import Dir, Offspring
 
@@ -153,3 +154,9 @@ class SmallFS(TestFS):
         self.fs.rename('/dir2', '/new_directory')
         self.assertTrue(self.mock_swift.get.called)
         self.assertTrue(self.mock_swift.mkdir.called)
+
+    def test_getattr_for_dir(self):
+        st = self.fs.getattr('/dir2')
+        self.assertTrue(self.mock_swift.get.called)
+        self.assertTrue(isinstance(st, Stat))
+        self.assertTrue((st.st_mode & stat.S_IFDIR) != 0)

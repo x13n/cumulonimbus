@@ -1,8 +1,38 @@
 import errno
+import stat
+import os
 from os.path import split, join
 from file import File
 from dir import Dir
 from cloud import NoSuchFileOrDirectory
+
+class Stat:
+    def __init__( self ):
+        self.st_ino = 0
+        self.st_dev = 0
+        self.st_mode = stat.S_IFDIR | 0777 # full access dir TODO: change
+        self.st_nlink = 2 # 2 hardlinks, as for empty dir  TODO: change
+        self.st_uid = os.getuid() # current uid TODO: change
+        self.st_gid = os.getgid() # current gid TODO: change
+        self.st_size = 4096 # dirsize TODO: change
+        now = 0 # datetime.utcnow()
+        self.st_atime = now
+        self.st_mtime = now
+        self.st_ctime = now
+
+    @classmethod
+    def for_file(cls, mode, size):
+        st = Stat()
+        st.st_mode = stat.S_IFREG | mode
+        st.st_size = size
+        return st
+
+    @classmethod
+    def for_dir(cls, mode):
+        st = Stat()
+        st.st_mode = stat.S_IFDIR | mode
+        st.st_nlink = 1
+        return st
 
 class FS:
     """
@@ -137,6 +167,18 @@ class FS:
         """
         try:
             self.swift.rm(path)
+        except NoSuchFileOrDirectory:
+            return -errno.ENOENT
+
+    def getattr(self, path):
+        try:
+            inode = self.swift.get(path)
+            if isinstance(inode, File):
+                return Stat.for_file(inode.mode, len(inode.contents))
+            elif isinstance(inode, Dir):
+                return Stat.for_dir(inode.mode)
+            else:
+                raise Exception("Unexpected inode type: %s" % type(inode))
         except NoSuchFileOrDirectory:
             return -errno.ENOENT
 
