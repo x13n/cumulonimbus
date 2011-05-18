@@ -4,6 +4,7 @@ from unittest import TestCase
 from mock import Mock
 from cumulonimbus.fs import FS
 from cumulonimbus.file import File
+from cumulonimbus.dir import Dir, Offspring
 
 class TestFS(TestCase):
 
@@ -76,10 +77,12 @@ class SmallFS(TestFS):
                 }
 
         def get_side_effect(path):
-            m = Mock()
-            m.children.names.return_value = fs[path]
-            m.contents = None
-            return m
+            d = Dir(755)
+            o = Offspring()
+            for name in fs[path]:
+                o[name] = object()
+            d.offspring = o
+            return d
 
         def mkdir_side_effect(path):
             pairs = []

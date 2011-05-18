@@ -99,9 +99,9 @@ class FS:
             return
         try:
             inode = self.swift.get(src)
-            if not inode.contents is None:
+            if isinstance(inode, File):
                 self._mv_file(src, dst)
-            elif not inode.children is None:
+            elif isinstance(inode, Dir):
                 self._mv_dir(src, dst)
             else:
                 raise Exception("Unexpected inode type: %s" % type(inode))
