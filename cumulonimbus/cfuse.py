@@ -12,6 +12,7 @@ from datetime import datetime
 
 # Logging actions
 import logging
+from inspect import stack
 
 LOG_FILENAME = "LOG"
 logging.basicConfig(filename=LOG_FILENAME,level=logging.INFO,)
@@ -58,92 +59,121 @@ class CFuse( fuse.Fuse ):
         logging.info("[mount][done]")
 
     def fsdestroy( self ):
-        logging.info("[unmount][init]")
+        return self._handle( self._fsdestroy )
+
+    def _fsdestroy( self ):
         self.fs = None
-        logging.info("[unmount][done]")
 
     def link( self, target, name ):
         # no hard links support
         return -errno.EOPNOTSUPP
 
     def opendir( self, path ):
-        logging.info("[opendir][init]")
+        return self._handle( self._opendir, path )
+
+    def _opendir( self, path ):
         retval = self.fs.opendir( path )
-        if retval is None:
-            logging.info("[opendir][done]")
-        return retval
+        if retval is not None:
+            raise ErrnoException( retval )
 
     def readdir( self, path, offset, dh=None ):
-        logging.info("[readdir][init]")
+        return self._handle( self._readdir, path, offset, dh )
+
+    def _readdir( self, path, offset, dh ):
         for x in self.fs.readdir( path, offset, dh ):
             yield fuse.Direntry(x)
-        logging.info("[readdir][done]")
 
     def releasedir( self, path, dh=None ):
-        logging.info("[releasedir][init]")
-        logging.info("[releasedir][done]")
+        return self._handle( self._releasedir, path, dh )
+
+    def _releasedir( self, path, dh ):
+        pass
 
     def mkdir( self, path, mode ):
-        logging.info("[mkdir][init]")
+        return self._handle( self._mkdir, path, mode )
+
+    def _mkdir( self, path, mode ):
         retval = self.fs.mkdir( path, mode )
         if retval is None:
-            logging.info("[mkdir][done]")
             return 0
         return retval
 
     def access( self, path, flags ):
-        logging.info("[access][init] [%s] [%s]" % (path, oct(flags) ) )
+        return self._handle( self._access, path, flags )
+
+    def _access( self, path, flags ):
         retval = self.fs.access( path, flags )
-        if retval == 0:
-            logging.info("[access][done]")
-        return retval
+        if retval != 0:
+            raise ErrnoException( retval )
+        return 0
 
     def getattr( self, path ):
-        logging.info("[getattr][init] [%s]" % (path) )
-        try:
-            if self.fs.access( path, 0 ) == -errno.ENOENT:
-                err = -errno.ENOENT
-                return err # TODO: call self.fs.getattr( path ) when implemented
-            retval = Stat()# self.fs.getattr( path )
-            logging.info("[getattr][done]")
-            return retval
-        except Exception as e:
-            logging.info("[getattr][exception] " + str(e))
-            return -errno.EINVAL
+        return self._handle( self._getattr, path )
+
+    def _getattr( self, path ):
+        if self.fs.access( path, 0 ) == -errno.ENOENT:
+            err = -errno.ENOENT
+            raise ErrnoException( err ) # TODO: call self.fs.getattr( path ) when implemented
+        retval = Stat()# self.fs.getattr( path )
+        return retval
 
     def statfs( self ):
-        logging.info("[statfs][init]")
+        return self._handle( self._statfs )
+
+    def _statfs( self ):
         stat = fuse.StatVfs() # TODO: fill it
-        logging.info("[statfs][done]")
         return stat
 
     def chmod( self, path, mode ):
-        logging.info("[chmod][init] [%s] [%s]" % (path, oct(mode)) )
+        return self._handle( self._chmod, path, mode )
+
+    def _chmod( self, path, mode ):
         retval = self.fs.chmod( path, mode )
         if( retval is None ):
-            logging.info("[chmod][done]")
             return 0
-        return -errno.EINVAL # TODO: other error(s)?
+        raise ErrnoException( -errno.EINVAL ) # TODO: other error(s)?
 
     def mknod(self, path, mode, rdev):
-        logging.info("[mknod][init]")
+        return self._handle( self._mknod, path, mode, rdev )
+
+    def _mknod(self, path, mode, rdev):
         if( mode & stat.S_IFREG == 0 ):
-            return -errno.EOPNOTSUPP
-        try:
-            retval = self.fs.create(path, mode & 0777, rdev)
-        except Exception as e:
-            logging.info("[mknod][exception] " + str(e))
-            return -errno.EINVAL
+            raise ErrnoException( -errno.EOPNOTSUPP )
+        retval = self.fs.create(path, mode & 0777, rdev)
         if retval is None:
             logging.info("[mknod][done]")
             return 0
-        return retval
+        raise ErrnoException( retval )
 
     def chown( self, path, uid, gid ):
+        return self._handle( self._chown, path, uid, gid )
+    
+    def _chown( self, path, uid, gid ):
         pass
 
     def utime(self, path, times):
+        return self._handle( self._utime, path, times )
+
+    def _utime(self, path, times):
         pass
+
+    def _handle(self, method, *args):
+        name = stack()[1][3]
+        logging.info("[%s][init] <- %s" % (name, map(str, args)))
+        try:
+            retval = method( *args )
+        except ErrnoException as e:
+            return e.errno
+        except Exception as e:
+            logging.error("[%s][exception] %s" % (name, str(e)))
+            return -errno.EINVAL
+        else:
+            logging.info("[%s][done] -> %s" % (name, str(retval)))
+            return retval
+
+class ErrnoException( Exception ):
+    def __init__( self, errno ):
+        self.errno = errno
 
 if __name__ == '__main__':
     def main():
