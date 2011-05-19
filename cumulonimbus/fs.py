@@ -170,6 +170,9 @@ class FS:
         except NoSuchFileOrDirectory:
             return -errno.ENOENT
 
+    def symlink(self, target, name):
+        return -errno.EOPNOTSUPP
+
     def getattr(self, path):
         try:
             inode = self.swift.get(path)

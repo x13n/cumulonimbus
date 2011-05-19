@@ -149,6 +149,14 @@ class CFuse( fuse.Fuse ):
         if not retval is None:
             raise ErrnoException(retval)
 
+    def symlink(self, target, name):
+        return self._handle(self._symlink, target, name)
+
+    def _symlink(self, target, name):
+        retval = self.fs.symlink(target, name)
+        if not retval is None:
+            raise ErrnoException( retval )
+
     def _handle(self, method, *args):
         name = stack()[1][3]
         logging.info("[%s][init] <- %s" % (name, map(str, args)))
