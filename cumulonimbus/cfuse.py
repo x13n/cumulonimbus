@@ -21,20 +21,6 @@ logging.basicConfig(filename=LOG_FILENAME,level=logging.INFO,)
 # FUSE version at the time of writing. Be compatible with this version.
 fuse.fuse_python_api = (0, 2)
 
-#class Stat( fuse.Stat ):
-#    def __init__( self ):
-#        self.st_ino = 0
-#        self.st_dev = 0
-#        self.st_mode = stat.S_IFDIR | 0777 # full access dir TODO: change
-#        self.st_nlink = 2 # 2 hardlinks, as for empty dir  TODO: change
-#        self.st_uid = os.getuid() # current uid TODO: change
-#        self.st_gid = os.getgid() # current gid TODO: change
-#        self.st_size = 4096 # dirsize TODO: change
-#        now = 0 # datetime.utcnow()
-#        self.st_atime = now
-#        self.st_mtime = now
-#        self.st_ctime = now
-
 class CFuse( fuse.Fuse ):
     """
     Cumulonimbus filesystem Fuse entry point. Implements methods called by
