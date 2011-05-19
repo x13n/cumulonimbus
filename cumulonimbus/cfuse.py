@@ -157,6 +157,14 @@ class CFuse( fuse.Fuse ):
         if not retval is None:
             raise ErrnoException( retval )
 
+    def unlink(self, path):
+        return self._handle(self._unlink, path)
+
+    def _unlink(self, path):
+        retval = self.fs.unlink( path )
+        if not retval is None:
+            raise ErrnoException( retval )
+
     def _handle(self, method, *args):
         name = stack()[1][3]
         logging.info("[%s][init] <- %s" % (name, map(str, args)))
