@@ -2,7 +2,7 @@
 
 import fuse
 from cloud import Swift
-from fs import FS
+from fs import FS, Stat
 import stat
 import errno
 
@@ -21,19 +21,19 @@ logging.basicConfig(filename=LOG_FILENAME,level=logging.INFO,)
 # FUSE version at the time of writing. Be compatible with this version.
 fuse.fuse_python_api = (0, 2)
 
-class Stat( fuse.Stat ):
-    def __init__( self ):
-        self.st_ino = 0
-        self.st_dev = 0
-        self.st_mode = stat.S_IFDIR | 0777 # full access dir TODO: change
-        self.st_nlink = 2 # 2 hardlinks, as for empty dir  TODO: change
-        self.st_uid = os.getuid() # current uid TODO: change
-        self.st_gid = os.getgid() # current gid TODO: change
-        self.st_size = 4096 # dirsize TODO: change
-        now = 0 # datetime.utcnow()
-        self.st_atime = now
-        self.st_mtime = now
-        self.st_ctime = now
+#class Stat( fuse.Stat ):
+#    def __init__( self ):
+#        self.st_ino = 0
+#        self.st_dev = 0
+#        self.st_mode = stat.S_IFDIR | 0777 # full access dir TODO: change
+#        self.st_nlink = 2 # 2 hardlinks, as for empty dir  TODO: change
+#        self.st_uid = os.getuid() # current uid TODO: change
+#        self.st_gid = os.getgid() # current gid TODO: change
+#        self.st_size = 4096 # dirsize TODO: change
+#        now = 0 # datetime.utcnow()
+#        self.st_atime = now
+#        self.st_mtime = now
+#        self.st_ctime = now
 
 class CFuse( fuse.Fuse ):
     """
@@ -111,11 +111,10 @@ class CFuse( fuse.Fuse ):
         return self._handle( self._getattr, path )
 
     def _getattr( self, path ):
-        if self.fs.access( path, 0 ) == -errno.ENOENT:
-            err = -errno.ENOENT
-            raise ErrnoException( err ) # TODO: call self.fs.getattr( path ) when implemented
-        retval = Stat()# self.fs.getattr( path )
-        return retval
+        retval = self.fs.getattr( path )
+        if isinstance(retval, Stat):
+            return retval
+        raise ErrnoException( retval )
 
     def statfs( self ):
         return self._handle( self._statfs )
@@ -141,7 +140,6 @@ class CFuse( fuse.Fuse ):
             raise ErrnoException( -errno.EOPNOTSUPP )
         retval = self.fs.create(path, mode & 0777, rdev)
         if retval is None:
-            logging.info("[mknod][done]")
             return 0
         raise ErrnoException( retval )
 
@@ -156,6 +154,14 @@ class CFuse( fuse.Fuse ):
 
     def _utime(self, path, times):
         pass
+
+    def rename(self, src, dst):
+        return self._handle( self._rename, src, dst )
+
+    def _rename(self, src, dst):
+        retval = self.fs.rename(src, dst)
+        if not retval is None:
+            raise ErrnoException(retval)
 
     def _handle(self, method, *args):
         name = stack()[1][3]
@@ -174,13 +180,6 @@ class CFuse( fuse.Fuse ):
 class ErrnoException( Exception ):
     def __init__( self, errno ):
         self.errno = errno
-
-    def rename(self, src, dst):
-        logging.info("[rename][init]")
-        retval = self.fs.rename(src, dst)
-        if not retval is None:
-            return retval
-        logging.info("[rename][done]")
 
 if __name__ == '__main__':
     def main():
