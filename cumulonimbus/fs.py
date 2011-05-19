@@ -1,7 +1,38 @@
 import errno
-from os.path import split
+import stat
+import os
+from os.path import split, join
 from file import File
+from dir import Dir
 from cloud import NoSuchFileOrDirectory
+
+class Stat:
+    def __init__( self ):
+        self.st_ino = 0
+        self.st_dev = 0
+        self.st_mode = stat.S_IFDIR | 0777 # full access dir TODO: change
+        self.st_nlink = 2 # 2 hardlinks, as for empty dir  TODO: change
+        self.st_uid = os.getuid() # current uid TODO: change
+        self.st_gid = os.getgid() # current gid TODO: change
+        self.st_size = 4096 # dirsize TODO: change
+        now = 0 # datetime.utcnow()
+        self.st_atime = now
+        self.st_mtime = now
+        self.st_ctime = now
+
+    @classmethod
+    def for_file(cls, mode, size):
+        st = Stat()
+        st.st_mode = stat.S_IFREG | mode
+        st.st_size = size
+        return st
+
+    @classmethod
+    def for_dir(cls, mode):
+        st = Stat()
+        st.st_mode = stat.S_IFDIR | mode
+        st.st_nlink = 1
+        return st
 
 class FS:
     """
@@ -45,11 +76,11 @@ class FS:
             return
         if path != '/':
             head, tail = split(path)
-            if tail not in self.swift.get(head).children_names():
+            if tail not in self.swift.get(head).children.names():
                 return
         yield "."
         yield ".."
-        for name in self.swift.get(path).children_names():
+        for name in self.swift.get(path).children.names():
             yield name
 
     def create(self, path, mode, rdev):
@@ -88,16 +119,66 @@ class FS:
             return ex.error
         self.swift.mkdir(path)
 
-    def rename(self, old, new):
+    def rename(self, src, dst):
         """
-        Moves a file from one path to another.
+        Moves a file or a directory from one path to another. In case of
+        directories uses a recursive approach.
         """
-        if old == new:
-            # TODO: Which error should be returned here?
-            return -errno.EOPNOTSUPP
+        if src == dst:
+            # If src is equal to dst there's nothing we can do.
+            return
         try:
-            self.swift.put(new, self.swift.get(old))
-            self.swift.rm(old)
+            inode = self.swift.get(src)
+            if isinstance(inode, File):
+                self._mv_file(src, dst)
+            elif isinstance(inode, Dir):
+                self._mv_dir(src, dst)
+            else:
+                raise Exception("Unexpected inode type: %s" % type(inode))
+        except NoSuchFileOrDirectory:
+            return -errno.ENOENT
+
+    def _mv_dir(self, src, dst):
+        src_dir = self.swift.get(src)
+        assert(not src_dir.children is None)
+        self.mkdir(dst, src_dir.mode)
+        # Now recursively move contents of the src directory to the dst.
+        for child in src_dir.children.names():
+            if child in ['.', '..']:
+                continue
+            err = self.rename(join(src, child), join(dst, child))
+            if err == -errno.ENOENT:
+                raise NoSuchFileOrDirectory
+            elif not err is None:
+                # Not good, this isn't an error we're expecting to encounter.
+                raise Exception(repr(err))
+        self.swift.rm(src)
+        assert(not self.swift.get(dst).children is None)
+
+    def _mv_file(self, src, dst):
+        assert(not self.swift.get(src).contents is None)
+        self.swift.put(dst, self.swift.get(src))
+        self.swift.rm(src)
+        assert(not self.swift.get(dst).contents is None)
+
+    def unlink(self, path):
+        """
+        Removes a file.
+        """
+        try:
+            self.swift.rm(path)
+        except NoSuchFileOrDirectory:
+            return -errno.ENOENT
+
+    def getattr(self, path):
+        try:
+            inode = self.swift.get(path)
+            if isinstance(inode, File):
+                return Stat.for_file(inode.mode, len(inode.contents))
+            elif isinstance(inode, Dir):
+                return Stat.for_dir(inode.mode)
+            else:
+                raise Exception("Unexpected inode type: %s" % type(inode))
         except NoSuchFileOrDirectory:
             return -errno.ENOENT
 
@@ -105,7 +186,7 @@ class FS:
         self._check_for_path_error(path)
         if path != '/':
             head, tail = split(path)
-            if tail not in self.swift.get(head).children_names():
+            if tail not in self.swift.get(head).children.names():
                 raise PathException(-errno.ENOENT)
 
     def _check_for_path_error(self, path):

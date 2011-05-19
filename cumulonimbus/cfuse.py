@@ -175,6 +175,13 @@ class ErrnoException( Exception ):
     def __init__( self, errno ):
         self.errno = errno
 
+    def rename(self, src, dst):
+        logging.info("[rename][init]")
+        retval = self.fs.rename(src, dst)
+        if not retval is None:
+            return retval
+        logging.info("[rename][done]")
+
 if __name__ == '__main__':
     def main():
         cfuse = CFuse( dash_s_do='setsingle' )

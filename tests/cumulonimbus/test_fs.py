@@ -1,9 +1,11 @@
 import errno
 import os
+import stat
 from unittest import TestCase
 from mock import Mock
-from cumulonimbus.fs import FS
+from cumulonimbus.fs import FS, Stat
 from cumulonimbus.file import File
+from cumulonimbus.dir import Dir, Offspring
 
 class TestFS(TestCase):
 
@@ -13,7 +15,7 @@ class TestFS(TestCase):
 
     def prepare_mock_swift(self):
         mock = Mock()
-        mock.get.return_value.children_names.return_value = []
+        mock.get.return_value.children.names.return_value = []
         return mock
 
 class EmptyFS(TestFS):
@@ -40,7 +42,7 @@ class EmptyFS(TestFS):
         self.assertEquals(args[1], {})
         self.assertEquals(len(args[0]), 2)
         self.assertEquals(args[0][1].mode, 0321)
-        self.assertEquals(args[0][1].contents(), '')
+        self.assertEquals(args[0][1].contents, '')
 
     def test_creating_directory(self):
         self.assertIsNone(self.fs.mkdir('/new_dir', 0321))
@@ -67,15 +69,39 @@ class SmallFS(TestFS):
 
         """
         swift = super(SmallFS, self).prepare_mock_swift()
+
+        fs = {
+                '/':            ['dir1', 'dir2'],
+                '/dir1' :       [],
+                '/dir2' :       ['dir3'],
+                '/dir2/dir3' :  [],
+                }
+
         def get_side_effect(path):
-            m = Mock()
-            m.children_names.return_value = {
-                    '/': ['dir1', 'dir2'],
-                    '/dir1' : [],
-                    '/dir2' : ['dir3'],
-                    }[path]
-            return m
+            d = Dir(755)
+            o = Offspring()
+            for name in fs[path]:
+                o[name] = object()
+            d.offspring = o
+            return d
+
+        def mkdir_side_effect(path):
+            pairs = []
+            head = path
+            while True:
+                head, tail = os.path.split(head)
+                pairs = [(head,tail)] + pairs
+                if head == '/':
+                    break
+            for head, tail in pairs:
+                if not head in fs:
+                    raise Exception("The test wasn't set up correctly.")
+                if not tail in fs[head]:
+                    fs[head].append(tail)
+            fs[path] = []
+
         swift.get.side_effect = get_side_effect
+        swift.mkdir.side_effect = mkdir_side_effect
         return swift
 
     def test_opening_dir(self):
@@ -123,3 +149,14 @@ class SmallFS(TestFS):
     def test_accessing_nonexistent_dir(self):
         for dir in ['/nothing', '/dir2/no_such_dir']:
             self.assertEquals(self.fs.access(dir, os.F_OK), -errno.ENOENT)
+
+    def test_renaming_dir(self):
+        self.fs.rename('/dir2', '/new_directory')
+        self.assertTrue(self.mock_swift.get.called)
+        self.assertTrue(self.mock_swift.mkdir.called)
+
+    def test_getattr_for_dir(self):
+        st = self.fs.getattr('/dir2')
+        self.assertTrue(self.mock_swift.get.called)
+        self.assertTrue(isinstance(st, Stat))
+        self.assertTrue((st.st_mode & stat.S_IFDIR) != 0)
