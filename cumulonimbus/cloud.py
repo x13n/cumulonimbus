@@ -8,6 +8,7 @@ import swift.common.client as scc
 
 import dir
 import file
+from symlink import Symlink
 
 class CloudException( Exception ) : pass
 class NoSuchFileOrDirectory( CloudException ) : pass
@@ -42,10 +43,10 @@ class Swift :
 		''' Connect to swift server and create root directory '''
 		self.con = scc.Connection( authurl , user , key )
 		self.dirs = {}
-#        try :
+#		try :
 		self.mkdir('/')
-#        except DirectoryExists :
-#            pass
+#		except DirectoryExists :
+#			pass
 
 	def _flush( self ) :
 		''' force send all data to swift server '''
@@ -96,17 +97,19 @@ class Swift :
 				raise OperationNotPermitted('get '+path)
 			elif e.http_status != 404 :
 				raise UnknownError(e)
-			cont , obj = os.path.split(path)
-			if obj == '' : raise NoSuchFileOrDirectory(path)
+			cont , objname = os.path.split(path)
+			if objname == '' : raise NoSuchFileOrDirectory(path)
 
 			try :
-				obj = self.con.get_object(fs2sw(cont),obj)
+				obj = self.con.get_object(fs2sw(cont),objname)
 			except scc.ClientException as e :
 				if e.http_status == 401 :
 					raise OperationNotPermitted('get '+path)
 				if e.http_status == 404 :
 					raise NoSuchFileOrDirectory(path)
 				else : raise UnknownError(e)
+			if self.con.head_object(fs2sw(cont), objname)['content-type'] == 'symlink':
+				return Symlink(0644,obj[1],toepoch(obj[0]['last-modified']))
 			return File(0644,obj[1],toepoch(obj[0]['last-modified']))
 		assert(False)
 
@@ -114,7 +117,7 @@ class Swift :
 		'''
 		send file at given path 
 
-		can rise ValueError if path is invalid
+		can raise ValueError if path is invalid
 		'''
 		assert( self.con != None )
 
@@ -126,7 +129,10 @@ class Swift :
 		self.get(cont)
 
 		try :
-			self.con.put_object(fs2sw(cont),obj,file.contents)
+			if isinstance(file, Symlink):
+				self.con.put_object(fs2sw(cont),obj,file.contents, content_type='symlink')
+			else:
+				self.con.put_object(fs2sw(cont),obj,file.contents)
 		except scc.ClientException as e :
 			if e.http_status == 401 :
 				raise OperationNotPermitted('get '+path)

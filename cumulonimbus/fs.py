@@ -4,6 +4,7 @@ import os
 from os.path import split, join
 from file import File
 from dir import Dir
+from symlink import Symlink
 from cloud import NoSuchFileOrDirectory
 
 class Stat:
@@ -32,6 +33,13 @@ class Stat:
         st = Stat()
         st.st_mode = stat.S_IFDIR | mode
         st.st_nlink = 1
+        return st
+
+    @classmethod
+    def for_symlink(cls, mode, size):
+        st = Stat()
+        st.st_mode = stat.S_IFLNK | mode
+        st.st_size = size
         return st
 
 class FS:
@@ -170,13 +178,18 @@ class FS:
         except NoSuchFileOrDirectory:
             return -errno.ENOENT
 
-    def symlink(self, target, name):
-        return -errno.EOPNOTSUPP
+    def symlink(self, target, path):
+        """
+        Creates a symbolic link.
+        """
+        self.swift.put(path, Symlink(0777, target))
 
     def getattr(self, path):
         try:
             inode = self.swift.get(path)
-            if isinstance(inode, File):
+            if isinstance(inode, Symlink):
+                return Stat.for_symlink(inode.mode, len(inode.contents))
+            elif isinstance(inode, File):
                 return Stat.for_file(inode.mode, len(inode.contents))
             elif isinstance(inode, Dir):
                 return Stat.for_dir(inode.mode)
