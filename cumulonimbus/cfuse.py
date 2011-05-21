@@ -13,6 +13,7 @@ from datetime import datetime
 # Logging actions
 import logging
 from inspect import stack
+from traceback import format_exc
 
 LOG_FILENAME = "LOG"
 logging.basicConfig(filename=LOG_FILENAME,level=logging.INFO,)
@@ -180,9 +181,11 @@ class CFuse( fuse.Fuse ):
         try:
             retval = method( *args )
         except ErrnoException as e:
+            logging.info("[%s][errno] -> %s" % (name, e.errno))
             return e.errno
         except Exception as e:
-            logging.error("[%s][exception] %s" % (name, str(e)))
+            logging.error("[%s][exception] %s: %s" % (name, e.__class__.__name__, str(e)))
+            logging.error(format_exc())
             return -errno.EINVAL
         else:
             logging.info("[%s][done] -> %s" % (name, str(retval)))
