@@ -146,6 +146,17 @@ class FS:
         except NoSuchFileOrDirectory:
             return -errno.ENOENT
 
+    def read(self, path):
+        """
+        Returns file contents
+        """
+        try:
+            file = self.swift.get(path)
+            assert(isinstance(file, File)) # kernel wouldn't ask to read a dir like this
+            return file.contents
+        except NoSuchFileOrDirectory:
+            return -errno.ENOENT
+
     def _mv_dir(self, src, dst):
         src_dir = self.swift.get(src)
         assert(not src_dir.children is None)
