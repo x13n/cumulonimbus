@@ -175,6 +175,56 @@ class CFuse( fuse.Fuse ):
             raise ErrnoException( retval )
         return retval
 
+    def read(self, path, size, offset, fh=None):
+        self._handle(self._read, path, size, offset)
+
+    def _read(self, path, size, offset):
+        retval = self.fs.read(path)
+        if not isinstance(retval, str):
+            raise ErrnoException( retval )
+        return retval[offset:offset+size]
+
+    def write(self, path, buf, offset, fh=None):
+        self._handle(self._write, path, buf, offset)
+
+    def _write(self, path, buf, offset):
+        bufsize = len(buf)
+        content = self.fs.read(path)
+        if not isinstance(content, str):
+            raise ErrnoException(content)
+        content = content[0:offset] + buf + content[offset+bufsize:]
+        retval = self.fs.write(path, content)
+        if not retval is None:
+            raise ErrnoException( retval )
+        return len(buf) # TODO: something other than a fake success?
+
+    def ftruncate(self, path, size, fh=None):
+        return self._handle(self._ftruncate, path, size)
+        
+    def _ftruncate(self, path, size):
+        return -errno.EOPNOTSUPP
+
+    def flush(self, path, fh=None):
+        return self._handle(self._flush, path)
+
+    def _flush(self, path):
+        return 0 # return -errno.EOPNOTSUPP
+
+    def fsync(self, path, datasync, fh=None):
+        return self._handle(self._fsync, path, datasync)
+
+    def _fsync(self, path, datasync):
+        return -errno.EOPNOTSUPP
+
+    def release(self, path, flags, fh=None):
+        return self._handle(self._release, path, flags)
+
+    def _release(self, path, flags):
+        return 0 # -errno.EOPNOTSUPP
+
+    def fgetattr(self, path):
+        self._handle(self._getattr, path)
+
     def _handle(self, method, *args):
         name = stack()[1][3]
         logging.info("[%s][init] <- %s" % (name, map(str, args)))

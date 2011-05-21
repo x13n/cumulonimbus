@@ -157,6 +157,14 @@ class FS:
         except NoSuchFileOrDirectory:
             return -errno.ENOENT
 
+    def write(self, path, buf):
+        """
+        Saves contents to a file
+
+        TODO: preserve mode of old file
+        """
+        self.swift.put(path, File(0644, buf))
+
     def _mv_dir(self, src, dst):
         src_dir = self.swift.get(src)
         assert(not src_dir.children is None)
