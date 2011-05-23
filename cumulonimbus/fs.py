@@ -189,6 +189,15 @@ class FS:
         except NoSuchFileOrDirectory:
             return -errno.ENOENT
 
+    def rmdir(self, path):
+        """
+        Removes a dir.
+        """
+        try:
+            self.swift.rm(path, True)
+        except NoSuchFileOrDirectory:
+            return -errno.ENOENT
+
     def symlink(self, target, path):
         """
         Creates a symbolic link.

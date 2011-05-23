@@ -166,6 +166,14 @@ class CFuse( fuse.Fuse ):
         if not retval is None:
             raise ErrnoException( retval )
 
+    def rmdir(self, path):
+        return self._handle(self._rmdir, path)
+
+    def _rmdir(self, path):
+        retval = self.fs.rmdir( path )
+        if not retval is None:
+            raise ErrnoException( retval )
+
     def readlink(self, path):
         return self._handle(self._readllink, path)
 
