@@ -12,7 +12,7 @@ class Stat:
         self.st_ino = 0
         self.st_dev = 0
         self.st_mode = stat.S_IFDIR | 0777 # full access dir TODO: change
-        self.st_nlink = 2 # 2 hardlinks, as for empty dir  TODO: change
+        self.st_nlink = 1
         self.st_uid = os.getuid() # current uid TODO: change
         self.st_gid = os.getgid() # current gid TODO: change
         self.st_size = 4096 # dirsize TODO: change
@@ -20,6 +20,9 @@ class Stat:
         self.st_atime = now
         self.st_mtime = now
         self.st_ctime = now
+
+    def __repr__(self):
+        return str(self.__dict__)
 
     @classmethod
     def for_file(cls, mode, size):
@@ -29,10 +32,10 @@ class Stat:
         return st
 
     @classmethod
-    def for_dir(cls, mode):
+    def for_dir(cls, mode, nlink):
         st = Stat()
         st.st_mode = stat.S_IFDIR | mode
-        st.st_nlink = 1
+        st.st_nlink = nlink
         return st
 
     @classmethod
@@ -220,7 +223,7 @@ class FS:
             elif isinstance(inode, File):
                 return Stat.for_file(inode.mode, len(inode.contents))
             elif isinstance(inode, Dir):
-                return Stat.for_dir(inode.mode)
+                return Stat.for_dir(inode.mode, self._dircount(inode)+2)
             else:
                 raise Exception("Unexpected inode type: %s" % type(inode))
         except NoSuchFileOrDirectory:
@@ -238,6 +241,13 @@ class FS:
             raise PathException(-errno.ENOENT)
         if path[0] != '/':
             raise PathException(-errno.EINVAL)
+
+    def _dircount(self, inode):
+        i = 0
+        for x in inode.children.objects():
+            if isinstance(x, Dir):
+                i += 1
+        return i
 
 class PathException(Exception):
     """
