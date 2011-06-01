@@ -130,6 +130,9 @@ class CFuse( fuse.Fuse ):
             return 0
         raise ErrnoException( retval )
 
+    def create(self, path, mode, rdev):
+        self._handle(self._mknod, path, mode, rdev)
+
     def chown( self, path, uid, gid ):
         return self._handle( self._chown, path, uid, gid )
     
@@ -206,6 +209,13 @@ class CFuse( fuse.Fuse ):
             raise ErrnoException( retval )
         return len(buf) # TODO: something other than a fake success?
 
+    def truncate(self, path, size):
+        self._handle( self._truncate, path, size)
+
+    def _truncate(self, path, size):
+        if size != 0:
+            raise ErrnoException( -errno.EOPNOTSUPP )
+
     def ftruncate(self, path, size, fh=None):
         return self._handle(self._ftruncate, path, size)
         
@@ -216,7 +226,7 @@ class CFuse( fuse.Fuse ):
         return self._handle(self._flush, path)
 
     def _flush(self, path):
-        return 0 # return -errno.EOPNOTSUPP
+        pass # return -errno.EOPNOTSUPP
 
     def fsync(self, path, datasync, fh=None):
         return self._handle(self._fsync, path, datasync)
@@ -228,10 +238,24 @@ class CFuse( fuse.Fuse ):
         return self._handle(self._release, path, flags)
 
     def _release(self, path, flags):
-        return 0 # -errno.EOPNOTSUPP
+        pass # return 0 # -errno.EOPNOTSUPP
 
     def fgetattr(self, path):
         self._handle(self._getattr, path)
+
+    def open(self, path, flags):
+        self._handle(self._open, path, flags)
+
+    def _open(self, path, flags):
+        retval = self.fs.access( path, flags )
+        if retval != 0:
+            raise ErrnoException(retval)
+
+    def getxattr(self, *args, **kwargs):
+        self._handle(self._getxattr, *args, **kwargs)
+
+    def _getxattr(self, *args, **kwargs):
+        return -errno.EOPNOTSUPP
 
     def _handle(self, method, *args):
         name = stack()[1][3]
