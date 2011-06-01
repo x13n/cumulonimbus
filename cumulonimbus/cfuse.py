@@ -131,7 +131,7 @@ class CFuse( fuse.Fuse ):
         raise ErrnoException( retval )
 
     def create(self, path, mode, rdev):
-        self._handle(self._mknod, path, mode, rdev)
+        return self._handle(self._mknod, path, mode, rdev)
 
     def chown( self, path, uid, gid ):
         return self._handle( self._chown, path, uid, gid )
@@ -187,7 +187,7 @@ class CFuse( fuse.Fuse ):
         return retval
 
     def read(self, path, size, offset, fh=None):
-        self._handle(self._read, path, size, offset)
+        return self._handle(self._read, path, size, offset)
 
     def _read(self, path, size, offset):
         retval = self.fs.read(path)
@@ -196,7 +196,7 @@ class CFuse( fuse.Fuse ):
         return retval[offset:offset+size]
 
     def write(self, path, buf, offset, fh=None):
-        self._handle(self._write, path, buf, offset)
+        return self._handle(self._write, path, buf, offset)
 
     def _write(self, path, buf, offset):
         bufsize = len(buf)
@@ -210,7 +210,7 @@ class CFuse( fuse.Fuse ):
         return len(buf) # TODO: something other than a fake success?
 
     def truncate(self, path, size):
-        self._handle( self._truncate, path, size)
+        return self._handle( self._truncate, path, size)
 
     def _truncate(self, path, size):
         if size != 0:
@@ -241,10 +241,10 @@ class CFuse( fuse.Fuse ):
         pass # return 0 # -errno.EOPNOTSUPP
 
     def fgetattr(self, path):
-        self._handle(self._getattr, path)
+        return self._handle(self._getattr, path)
 
     def open(self, path, flags):
-        self._handle(self._open, path, flags)
+        return self._handle(self._open, path, flags)
 
     def _open(self, path, flags):
         retval = self.fs.access( path, flags )
@@ -252,7 +252,7 @@ class CFuse( fuse.Fuse ):
             raise ErrnoException(retval)
 
     def getxattr(self, *args, **kwargs):
-        self._handle(self._getxattr, *args, **kwargs)
+        return self._handle(self._getxattr, *args, **kwargs)
 
     def _getxattr(self, *args, **kwargs):
         return -errno.EOPNOTSUPP
