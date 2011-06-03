@@ -114,6 +114,7 @@ class CFuse( fuse.Fuse ):
         return self._handle( self._chmod, path, mode )
 
     def _chmod( self, path, mode ):
+        return 0 # fs.chmod not implemented
         retval = self.fs.chmod( path, mode )
         if( retval is None ):
             return 0
@@ -232,7 +233,7 @@ class CFuse( fuse.Fuse ):
         return self._handle(self._fsync, path, datasync)
 
     def _fsync(self, path, datasync):
-        return -errno.EOPNOTSUPP
+        return 0
 
     def release(self, path, flags, fh=None):
         return self._handle(self._release, path, flags)
